@@ -1,0 +1,82 @@
+﻿#region License
+
+// A simplistic Behavior Tree implementation in C#
+// Copyright (C) 2010-2011 ApocDev apocdev@gmail.com
+// 
+// This file is part of TreeSharp
+// 
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#endregion
+
+using UnityEngine;
+using System.Collections.Generic;
+using System;
+
+namespace TreeSharpPlus
+{
+    /// <summary>
+    ///   The base sequence class. This will execute each branch of logic, in order.
+    ///   If all branches succeed, this composite will return a successful run status.
+    ///   If any branch fails, this composite will return a failed run status.
+    /// </summary>
+	public class MyRandom : NodeGroup
+    {
+		private int nodeN;
+
+		public MyRandom (params Node[] children)
+            : base(children)
+        {
+			nodeN = 0;
+			foreach (Node node in this.Children) {
+				nodeN++;
+			}
+        }
+
+        public override IEnumerable<RunStatus> Execute()
+        {
+			System.Random random = new System.Random();
+			int chosen = random.Next (1, 1 + nodeN), n = 0;
+
+            foreach (Node node in this.Children)
+            {
+                // Move to the next node
+				n++;
+				if (n == chosen) {
+
+					this.Selection = node;
+					node.Start ();
+
+					// If the current node is still running, report that. Don't 'break' the enumerator
+					RunStatus result;
+					while ((result = this.TickNode (node)) == RunStatus.Running)
+						yield return RunStatus.Running;
+
+					// Call Stop to allow the node to clean anything up.
+					node.Stop ();
+
+					// Clear the selection
+					this.Selection.ClearLastStatus ();
+					this.Selection = null;
+
+					yield return result;
+					yield break;
+				}
+            }
+
+            yield return RunStatus.Success;
+            yield break;
+        }
+    }
+}
